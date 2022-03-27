@@ -90,30 +90,32 @@ def builder():
             #print("Primers : ", primers)
 
 def compute_lanes_neighbors():
-    # lanes_neighbors is a dictionnary that save the nighboring cells coordinates
-    # for each lane cells.
+    # lanes_neighbors is a dictionnary that save the neighboring cells 
+    #coordinates for each lane cells.
     lanes_neighbors = {}
-    maze.compute_neighbors()
     for (i, j) in lanes :
         raw_neighbors = [(i+1, j), (i, j+1), (i-1, j), (i, j-1)]
-        neighbors = [k for k in raw_neighbors if k not in walls]
+        neighbors = [k for k in raw_neighbors \
+                     if Grid.get_values(maze.grid, [k])[0] != 1]
         lanes_neighbors[(i, j)] = neighbors
     return lanes_neighbors
             
-def map_coloring(lanes_neighbors):
-    global exit_point
+def map_coloring(neighbors):
+    global exit_point, lanes
     colored_map = maze.grid.copy()
-    anchors = [exit_point]
-    while len(anchors) != 0 :
-        position = anchors.pop()
-        neighbors_raw = lanes_neighbors[position]
-        neighbors = [k for k in neighbors_raw if colored_map[k[1], k[0]] == 0]
-        if len(neighbors) != 0:
-            anchors += neighbors
-            next_position = anchors[-1]
-            colored_map[next_position[1], next_position[0]] = \
-                colored_map[position[1], position[0]]+1 
+    modif = True
+    while modif :
+        modif = False
+        for k in lanes :
+            Value = Grid.get_values(colored_map, [k])[0]
+            Max = max(Grid.get_values(colored_map, neighbors[k]))
+            if Value < Max :
+                modif = True
+                colored_map[k[1], k[0]] = Max        
     plt.imshow(colored_map)
+        
+            
+        
     
     
     

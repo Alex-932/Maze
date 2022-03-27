@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Grid generating class
+Grid class to make working with numpy arrays much easier
 
 @author: Alex-932
-@Version : 1.1 (27/03/22)
+@Version : 2.0 (27/03/22)
 """
 import numpy
 import matplotlib.pyplot as plt
@@ -44,13 +44,13 @@ class Grid():
             self.grid = numpy.ones([self._y, self._x])*self._value
         elif self._dist == "random" and type(self._value) == list :
             self.grid = numpy.random.choice(
-                self._value, size=[self._y, self._x], p=[(1-rep), rep])
+                self._value, size = [self._y, self._x], p=[(1-rep), rep])
         else :
             raise ValueError("Wrong set of parameters")
         self.saved = []
         self.coordinates()
     
-    def set_value(self, coord, value):
+    def set_values(self, coord, value):
         """
         Set the value of the cells whose coordinates are in the coord list to 
         value.
@@ -72,44 +72,58 @@ class Grid():
                 y.append(k)
         self.grid[y, x] = value
         
-    def get_value(self, x, y):
+    def get_values(self, coord):
         """
-        Method used to get the value of a cell.
+        Method used to get the value of one or more cell.
 
         Parameters
         ----------
-        x : (Int) x coordinates of the cell.
-        y : (Int) y coordinates of the cell.
+        coord : tuple or list of tuples
+            The tuple include the X and Y coordinates.
 
         Returns
         -------
-        The value of the designated cell.
+        The value of the designated cell(s).
 
         """
-        return self.grid[y, x]
+        return [self.grid[y, x] for (x, y) in coord]
     
-    def get_neighbors(self, x, y, length=1):
+    def get_neighbors(self, coord, length=1, pattern='O'):
         """
         Method to calculate the coordinates of neighbors cells.
 
         Parameters
         ----------
-        x : (Int) x coordinates of the cell.
-        y : (Int) y coordinates of the cell.
-        length : (Int) Cell range for the search.
-
+        coord : tuple or list of tuple
+            The tuple include the X and Y coordinates.
+        length : int
+            Cell range for the search.
+        pattern : chr
+            Search pattern : "O" for a square area, "+" for a cross area.
+            
         Returns
         -------
         List of neighbors coordinates. 
         """
         list_neigh = []
-        if x not in range(self._x) and y not in range(self._y):
-            raise ValueError("Coordinates are not in the array") 
-        for k in range(y-length, y+1+length):
-            if k >= 0 and k < self.grid.shape[0] :
-                for j in range(x-length, x+1+length):
-                    if j >= 0 and j < self.grid.shape[1] and (k,j) != (y,x) :
-                        list_neigh.append((j, k))
+        if length < 1 :
+            raise ValueError("Incorrect length (must be >= 1)")
+        if type(coord) != list and len(coord) != 1 :
+            raise ValueError("Something is wrong with the coordinates")
+        if coord[0] not in range(self._x) and coord[1] not in range(self._y):
+            raise ValueError("Some coordinates are not in the array")
+        if pattern == 'O':
+            for k in range(coord[1]-length, coord[1]+1+length):
+                if k >= 0 and k < self.grid.shape[0] :
+                    for j in range(coord[0]-length, coord[1]+1+length):
+                        if j >= 0 and j < self.grid.shape[1] \
+                            and (k,j) != (coord[1],coord[0]) :
+                            list_neigh.append((j, k))
+        elif pattern == '+':
+            modulation_list = [k for k in range(-length, length+1) if k != 0]
+            for k in modulation_list:
+                list_neigh.append((coord[0]+k,coord[1]))
+                list_neigh.append((coord[0],coord[1]+k))
         return list_neigh
     
     def get_neighbors_tor(self, x, y, length=1):
@@ -135,22 +149,6 @@ class Grid():
                 if (k,j) != (y,x) :
                     list_neigh.append((j%self._x, k%self._y))
         return list_neigh
-    
-    def get_neighbors_values(self, x, y):
-        """
-        Method similar to get_neighbors() but return a list of the values of 
-        the surrounding cells.
-
-        Parameters
-        ----------
-        x : (Int) x coordinates of the cell.
-        y : (Int) y coordinates of the cell.
-
-        Returns
-        -------
-        List of neighbors values.
-        """
-        return [self.grid[y, x] for (x, y) in self.neighbors[str((x, y))]]
         
     def show_neighbors(self, x, y, length=1):
         """
@@ -167,7 +165,7 @@ class Grid():
         None.
         """
         if self._neighbors_length == length :
-            list_neigh = self.neighbors[str((x, y))]
+            list_neigh = self.neighbors[(x, y)]
         elif self._tor :
             list_neigh = self.get_neighbors_tor(x, y, length)
         else :
@@ -202,13 +200,16 @@ class Grid():
             for j in range(self._y):
                 self.coord.append((k,j))
         
-    def compute_neighbors(self, length=1):
+    def compute_neighbors(self, length=1, pattern = 'O'):
         """
         Compute all the neighboring of all the cell of the array.
         
         Parameters
         ----------
-        length : (Int) Cell range for the search.
+        length : int
+            Cell range for the search.
+        pattern : chr
+            Search pattern : "O" for a square area, "+" for a cross area.
 
         Returns
         -------
@@ -222,9 +223,12 @@ class Grid():
                 list_neigh = self.get_neighbors_tor(x, y, length)
                 self.neighbors[(x, y)] = list_neigh
         else :
-            for (x, y) in self.coord:
-                list_neigh = self.get_neighbors(x, y, length)
-                self.neighbors[(x, y)] = list_neigh
+            for coord in self.coord:
+                list_neigh = self.get_neighbors(coord, length, pattern)
+                self.neighbors[coord] = list_neigh
+                
+    def display():
+        pass
                 
     def save_fig(self, name):
         """
@@ -273,7 +277,7 @@ class Grid():
         
 if __name__ == "__main__":  # exécuté sauf si le module est importé
     t = Grid(10, 5)
-    t.set_value([(0,0),(1,1),(2,2),(4,4)], 8)
+    t.set_values([(0,0),(1,1),(2,2),(4,4)], 8)
     t.display()
     t.compute_neighbors(length=1)
     print(t.get_neighbors(2, 2))
