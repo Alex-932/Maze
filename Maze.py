@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from grid import Grid
 from random import randint, shuffle
+import time
 
 Y, X, Tor = 21, 31, 0
 
@@ -29,15 +30,6 @@ walls = [(i, j) for (i, j) in maze.coord if (i%2)+(j%2) == 0]
 
 # lanes are cells where the player can walk and does not have a value of 1.
 lanes = [(i, j) for (i, j) in maze.coord if (i, j) not in walls]
-
-# lanes_neighbors is a dictionnary that save the nighboring cells coordinates
-# for each lane cells.
-lanes_neighbors = {}
-maze.compute_neighbors()
-for (i, j) in lanes :
-    raw_neighbors = maze.neighbors[str((i, j))]
-    neighbors = [k for k in raw_neighbors if k not in walls]
-    lanes_neighbors[(i, j)] = neighbors
     
 # lanes_next_cell = {}
 # for (i, j) in lanes :
@@ -72,7 +64,7 @@ def driller(position, next_point):
         coord_list = [next_point, middle_point]
     else :
         coord_list = [middle_point]
-    print("List drill : ", coord_list)
+    #print("List drill : ", coord_list)
     maze.set_value(coord_list, 0)
     
 
@@ -80,7 +72,6 @@ def builder():
     global start_point
     primers = [start_point]
     drilled = [start_point]
-    time = 0
     while len(primers) != 0:
         shuffle(primers)
         (px, py) = primers.pop()
@@ -89,18 +80,52 @@ def builder():
                        if x in range(maze.grid.shape[1]) \
                            and y in range(maze.grid.shape[0]) \
                                and (x, y) not in drilled]
-        print("Options : ", options)
+        #print("Options : ", options)
         shuffle(options)
         if len(options) >= 1 :
             next_position = options.pop()
             driller(position=(px, py), next_point=next_position)
             drilled.append(next_position)
             primers += [(px, py), next_position]
-            print("Primers : ", primers)
-        
-        time += 1
+            #print("Primers : ", primers)
+
+def compute_lanes_neighbors():
+    # lanes_neighbors is a dictionnary that save the nighboring cells coordinates
+    # for each lane cells.
+    lanes_neighbors = {}
+    maze.compute_neighbors()
+    for (i, j) in lanes :
+        raw_neighbors = [(i+1, j), (i, j+1), (i-1, j), (i, j-1)]
+        neighbors = [k for k in raw_neighbors if k not in walls]
+        lanes_neighbors[(i, j)] = neighbors
+    return lanes_neighbors
             
-        
+def map_coloring(lanes_neighbors):
+    global exit_point
+    colored_map = maze.grid.copy()
+    anchors = [exit_point]
+    while len(anchors) != 0 :
+        position = anchors.pop()
+        neighbors_raw = lanes_neighbors[position]
+        neighbors = [k for k in neighbors_raw if colored_map[k[1], k[0]] == 0]
+        if len(neighbors) != 0:
+            anchors += neighbors
+            next_position = anchors[-1]
+            colored_map[next_position[1], next_position[0]] = \
+                colored_map[position[1], position[0]]+1 
+    plt.imshow(colored_map)
+    
+    
+    
+    
+
+def maze_runner():
+    global start_point
+    explored_cells = [start_point]
+    position = start_point
+    while False == True:
+        pass
+    return True        
         
             
             
@@ -108,8 +133,10 @@ def builder():
             
     
     
-    
+start_time = time.time()    
 starter()
-plt.imshow(maze.grid, cmap="bone")
+#plt.imshow(maze.grid, cmap="bone")
 builder()
+print("Build time : ", time.time()-start_time, "s")
 plt.imshow(maze.grid, cmap="bone")
+lanes_neighbors = compute_lanes_neighbors()

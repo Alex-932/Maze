@@ -3,7 +3,7 @@
 Grid generating class
 
 @author: Alex-932
-@Version : 1.0 (20/03/22)
+@Version : 1.1 (27/03/22)
 """
 import numpy
 import matplotlib.pyplot as plt
@@ -220,11 +220,11 @@ class Grid():
         if self._tor :
             for (x, y) in self.coord:
                 list_neigh = self.get_neighbors_tor(x, y, length)
-                self.neighbors[str((x, y))] = list_neigh
+                self.neighbors[(x, y)] = list_neigh
         else :
             for (x, y) in self.coord:
                 list_neigh = self.get_neighbors(x, y, length)
-                self.neighbors[str((x, y))] = list_neigh
+                self.neighbors[(x, y)] = list_neigh
                 
     def save_fig(self, name):
         """
