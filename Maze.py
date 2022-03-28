@@ -64,11 +64,10 @@ def worker():
             primers += [(px, py), next_p]
             
     for coord in maze.coord :
-        print(coord)
         if maze.get_values(coord)[0] == 1 and coord not in drilled:
             drilled.append(coord)
             
-    maze.save("Original")
+    maze.save(name="Original")
             
 def compute_path_neighbors():
     global drilled, path_neighbors
@@ -88,12 +87,12 @@ def colored_map():
         maze.set_values(neighbors, maze.get_values(position)[0]+1)
         primers += neighbors
         colored += neighbors
-    maze.save("distance")
+    maze.save(name="Distance")
     start_distance = maze.get_values(start_point)
     maze.set_values([exit_point, start_point], \
                     max(maze.get_values(maze.coord))+10)
-    maze.grid = maze.saved[0]
-    return 
+    maze.grid = maze.saved["Original"]
+    return start_distance
 
 def maze_quality():
     pass
@@ -105,7 +104,8 @@ def maze_builder():
     worker()
     compute_path_neighbors()
     print("Build time : ", time.time()-start_time, "s")
-    maze.display() 
+    maze.display()
+    colored_map()
 
 maze_builder()      
             
