@@ -1,18 +1,22 @@
 # -*- coding: utf-8 -*-
 """
+Maze creation
+
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 1.0 (20/03/22)
+@version: 0.7 (20/03/22)
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from grid import Grid
-from random import randint, shuffle
+from random import shuffle
 import time
 
-Y, X, Tor = 21, 31, 0
+Y, X, Tor = 21, 31, False
+drilled = []
+path_neighbors = {}
 
 def parameters():
     global Y, X, Tor
@@ -23,53 +27,23 @@ def parameters():
 start_point = (1, 1)
 exit_point = (X-2, Y-2)
 
-maze = Grid(X, Y, tor=Tor, value=1)
-
-# walls are cells that stay at a value of 1.
-walls = [(i, j) for (i, j) in maze.coord if (i%2)+(j%2) == 0]
-
-# lanes are cells where the player can walk and does not have a value of 1.
-lanes = [(i, j) for (i, j) in maze.coord if (i, j) not in walls]
-    
-# lanes_next_cell = {}
-# for (i, j) in lanes :
-#     raw_next_cell = [(i-2, j), (i, j+2), (i+2, j), (i, j-2)]
-#     if i == 1 :
-#         lanes_next_cell[(i, j)] = raw_next_cell[1:]
-#     elif j == 1 :
-#         lanes_next_cell[(i, j)] = raw_next_cell[:3]
-#     elif j*i == 1 :
-#         lanes_next_cell[(i, j)] = raw_next_cell[:3]
-# doors are cells that can switch between being a wall or a lane.
-doors = [(i, j) for (i, j) in lanes if (i%2)+(j%2) == 1 and i not in [0, X-1]\
-         and j not in [0, Y-1]]
-
-if not Tor :
-    # borders are the cells that are the limit of the grid if the grid is non toroidal
-    borders = [(i, j) for (i, j) in maze.coord if i in [0,X-1] or j in [0,Y-1]]
-    walls += borders
+maze = Grid(X, Y, tor=Tor, value=0)
 
 def starter():
-    maze.set_value([start_point], 2)
-    maze.set_value([exit_point], 3)
-    if Tor :
-        maze.set_value(borders, 0)
-        maze.set_value(walls, 1)
+    maze.set_values([start_point], 2)
+    maze.set_values([exit_point], 3)
 
-def driller(position, next_point):
+def driller(position, middle_point, next_point):
     global exit_point
-    (px, py), (fx, fy) = position, next_point
-    middle_point = (int(px+(fx-px)/2), int(py+(fy-py)/2))
     if next_point != exit_point :
         coord_list = [next_point, middle_point]
     else :
         coord_list = [middle_point]
-    #print("List drill : ", coord_list)
-    maze.set_value(coord_list, 0)
+    maze.set_values(coord_list, 1)
     
 
-def builder():
-    global start_point
+def worker():
+    global start_point, drilled
     primers = [start_point]
     drilled = [start_point]
     while len(primers) != 0:
@@ -77,43 +51,63 @@ def builder():
         (px, py) = primers.pop()
         options = [(x, y) for (x, y) in \
                    [(px-2, py), (px, py+2), (px+2, py), (px, py-2)] \
-                       if x in range(maze.grid.shape[1]) \
-                           and y in range(maze.grid.shape[0]) \
+                       if x in range(maze._x) \
+                           and y in range(maze._y) \
                                and (x, y) not in drilled]
-        #print("Options : ", options)
         shuffle(options)
         if len(options) >= 1 :
-            next_position = options.pop()
-            driller(position=(px, py), next_point=next_position)
-            drilled.append(next_position)
-            primers += [(px, py), next_position]
-            #print("Primers : ", primers)
-
-def compute_lanes_neighbors():
-    # lanes_neighbors is a dictionnary that save the neighboring cells 
-    #coordinates for each lane cells.
-    lanes_neighbors = {}
-    for (i, j) in lanes :
-        raw_neighbors = [(i+1, j), (i, j+1), (i-1, j), (i, j-1)]
-        neighbors = [k for k in raw_neighbors \
-                     if Grid.get_values(maze.grid, [k])[0] != 1]
-        lanes_neighbors[(i, j)] = neighbors
-    return lanes_neighbors
+            next_p = options.pop()
+            mid_p = (int(px+(next_p[0]-px)/2), int(py+(next_p[1]-py)/2))
+            driller((px, py), mid_p, next_p)
+            drilled.append(next_p)
+            drilled.append(mid_p)
+            primers += [(px, py), next_p]
             
-def map_coloring(neighbors):
-    global exit_point, lanes
-    colored_map = maze.grid.copy()
-    modif = True
-    while modif :
-        modif = False
-        for k in lanes :
-            Value = Grid.get_values(colored_map, [k])[0]
-            Max = max(Grid.get_values(colored_map, neighbors[k]))
-            if Value < Max :
-                modif = True
-                colored_map[k[1], k[0]] = Max        
-    plt.imshow(colored_map)
-        
+    for coord in maze.coord :
+        print(coord)
+        if maze.get_values(coord)[0] == 1 and coord not in drilled:
+            drilled.append(coord)
+            
+    maze.save("Original")
+            
+def compute_path_neighbors():
+    global drilled, path_neighbors
+    for k in drilled:
+        neighbors = [coord for coord in maze.get_neighbors(k, pattern="+")\
+                     if coord in drilled]
+        path_neighbors[k] = neighbors
+    
+def colored_map():
+    global exit_point, path_neighbors, drilled, start_point
+    colored = [exit_point]
+    primers = colored.copy()
+    while len(drilled) != len(colored) :
+        position = primers.pop()
+        neighbors = [coord for coord in path_neighbors[position] \
+                     if coord not in colored]
+        maze.set_values(neighbors, maze.get_values(position)[0]+1)
+        primers += neighbors
+        colored += neighbors
+    maze.save("distance")
+    start_distance = maze.get_values(start_point)
+    maze.set_values([exit_point, start_point], \
+                    max(maze.get_values(maze.coord))+10)
+    maze.grid = maze.saved[0]
+    return 
+
+def maze_quality():
+    pass
+
+def maze_builder():
+    start_time = time.time()    
+    starter()
+    #plt.imshow(maze.grid, cmap="bone")
+    worker()
+    compute_path_neighbors()
+    print("Build time : ", time.time()-start_time, "s")
+    maze.display() 
+
+maze_builder()      
             
         
     
@@ -128,17 +122,3 @@ def maze_runner():
     while False == True:
         pass
     return True        
-        
-            
-            
-                
-            
-    
-    
-start_time = time.time()    
-starter()
-#plt.imshow(maze.grid, cmap="bone")
-builder()
-print("Build time : ", time.time()-start_time, "s")
-plt.imshow(maze.grid, cmap="bone")
-lanes_neighbors = compute_lanes_neighbors()

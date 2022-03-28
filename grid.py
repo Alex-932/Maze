@@ -35,19 +35,18 @@ class Grid():
         self._y = int(y)
         self._dist = str(dist)
         self._rep = float(rep)
-        self._value = value
         self._tor = tor
         self.fig, self.ax = plt.subplots(figsize=(16, 16))
         self.neighbors = 1
         
-        if self._dist == "fixed" and type(self._value) == int :
-            self.grid = numpy.ones([self._y, self._x])*self._value
-        elif self._dist == "random" and type(self._value) == list :
+        if self._dist == "fixed" and type(value) == int :
+            self.grid = numpy.ones([self._y, self._x])*value
+        elif self._dist == "random" and type(value) == list :
             self.grid = numpy.random.choice(
-                self._value, size = [self._y, self._x], p=[(1-rep), rep])
+                value, size = [self._y, self._x], p=[(1-rep), rep])
         else :
             raise ValueError("Wrong set of parameters")
-        self.saved = []
+        self.saved = {}
         self.coordinates()
     
     def set_values(self, coord, value):
@@ -83,10 +82,13 @@ class Grid():
 
         Returns
         -------
-        The value of the designated cell(s).
+        The value of the designated cell(s) as list.
 
         """
-        return [self.grid[y, x] for (x, y) in coord]
+        if type(coord) == list:
+            return [self.grid[y, x] for (x, y) in coord]
+        elif type(coord) == tuple:
+            return [self.grid[coord[1], coord[0]]]
     
     def get_neighbors(self, coord, length=1, pattern='O'):
         """
@@ -94,7 +96,7 @@ class Grid():
 
         Parameters
         ----------
-        coord : tuple or list of tuple
+        coord : tuple
             The tuple include the X and Y coordinates.
         length : int
             Cell range for the search.
@@ -105,85 +107,147 @@ class Grid():
         -------
         List of neighbors coordinates. 
         """
-        list_neigh = []
-        if length < 1 :
-            raise ValueError("Incorrect length (must be >= 1)")
-        if type(coord) != list and len(coord) != 1 :
-            raise ValueError("Something is wrong with the coordinates")
-        if coord[0] not in range(self._x) and coord[1] not in range(self._y):
-            raise ValueError("Some coordinates are not in the array")
-        if pattern == 'O':
-            for k in range(coord[1]-length, coord[1]+1+length):
-                if k >= 0 and k < self.grid.shape[0] :
-                    for j in range(coord[0]-length, coord[1]+1+length):
-                        if j >= 0 and j < self.grid.shape[1] \
-                            and (k,j) != (coord[1],coord[0]) :
-                            list_neigh.append((j, k))
-        elif pattern == '+':
-            modulation_list = [k for k in range(-length, length+1) if k != 0]
-            for k in modulation_list:
-                list_neigh.append((coord[0]+k,coord[1]))
-                list_neigh.append((coord[0],coord[1]+k))
-        return list_neigh
+        try :
+            return self.neighbors[coord]
+        except :
+            list_neigh = []
+            if length < 1 :
+                raise ValueError("Incorrect length (must be >= 1)")
+            if type(coord) != tuple and len(coord) != 2 :
+                raise ValueError("Something is wrong with the coordinates")
+            if coord[0] not in range(self._x) and \
+                coord[1] not in range(self._y):
+                raise ValueError("Some coordinates are not in the array")
+            if pattern == 'O':
+                for k in range(coord[1]-length, coord[1]+1+length):
+                    if k >= 0 and k < self._y :
+                        for j in range(coord[0]-length, coord[1]+1+length):
+                            if j >= 0 and j < self._x \
+                                and (k,j) != (coord[1],coord[0]) :
+                                list_neigh.append((j, k))
+            elif pattern == '+':
+                modulation_list = [k for k in range(-length, length+1)\
+                                   if k != 0]
+                for k in modulation_list:
+                    list_neigh.append((coord[0]+k,coord[1]))
+                    list_neigh.append((coord[0],coord[1]+k))
+            return list_neigh
     
-    def get_neighbors_tor(self, x, y, length=1):
+    def get_neighbors_tor(self, coord, length=1, pattern='O'):
         """
         Method to calculate the coordinates of neighbors cells similar to the 
         get_neighbors() method but consider the array as a toroidal space.
 
         Parameters
         ----------
-        x : (Int) x coordinates of the cell.
-        y : (Int) y coordinates of the cell.
-        length : (Int) Cell range for the search.
+        coord : tuple
+            The tuple include the X and Y coordinates.
+        length : int
+            Cell range for the search.
+        pattern : chr
+            Search pattern : "O" for a square area, "+" for a cross area.
 
         Returns
         -------
         List of neighbors coordinates. 
         """
-        list_neigh = []
-        if x not in range(self._x) and y not in range(self._y):
-            raise ValueError("Coordinates are not in the array") 
-        for k in range(y-length, y+1+length):
-            for j in range(x-length, x+1+length):
-                if (k,j) != (y,x) :
-                    list_neigh.append((j%self._x, k%self._y))
-        return list_neigh
+        try :
+            return self.neighbors[coord]
+        except :
+            list_neigh = []
+            if length < 1 :
+                raise ValueError("Incorrect length (must be >= 1)")
+            if type(coord) != tuple and len(coord) != 2 :
+                raise ValueError("Something is wrong with the coordinates")
+            if coord[0] not in range(self._x) and coord[1] not in range(self._y):
+                raise ValueError("Some coordinates are not in the array")
+            if pattern == 'O':
+                for k in range(coord[1]-length, coord[1]+1+length):
+                    for j in range(coord[0]-length, coord[1]+1+length):
+                        if (k,j) != (coord[1],coord[0]) :
+                            list_neigh.append((j%self._x, k%self._y))
+            elif pattern == '+':
+                modulation_list = [k for k in range(-length, length+1) if k != 0]
+                for k in modulation_list:
+                    list_neigh.append(((coord[0]+k)%self._x, coord[1]%self._y))
+                    list_neigh.append((coord[0]%self._x, (coord[1]+k)%self._y))
+            return list_neigh
         
-    def show_neighbors(self, x, y, length=1):
+    # def get_neighbors_border(self, coord, length=1, pattern='O'):
+    #     """
+    #     Method to get the coordinates of neighbors cells at the border of the
+    #     search range.
+
+    #     Parameters
+    #     ----------
+    #     coord : tuple
+    #         The tuple include the X and Y coordinates.
+    #     length : int
+    #         Cell range for the search.
+    #     pattern : chr
+    #         Search pattern : "O" for a square area, "+" for a cross area.
+            
+    #     Returns
+    #     -------
+    #     List of neighbors coordinates. 
+    #     """
+    #     list_neigh = []
+    #     if length < 1 :
+    #         raise ValueError("Incorrect length (must be >= 1)")
+    #     if type(coord) != tuple and len(coord) != 2 :
+    #         raise ValueError("Something is wrong with the coordinates")
+    #     if coord[0] not in range(self._x) and \
+    #         coord[1] not in range(self._y):
+    #         raise ValueError("Some coordinates are not in the array")
+    #     if pattern == 'O':
+    #         for k in range(coord[1]-length, coord[1]+1+length, length):
+    #             if k >= 0 and k < self._y :
+    #                 for j in range(coord[0]-length, coord[1]+1+length, length):
+    #                     if j >= 0 and j < self._x \
+    #                         and (k,j) != (coord[1],coord[0]) :
+    #                         list_neigh.append((j, k))
+    #     elif pattern == '+':
+    #         modulation_list = [k for k in range(-length, length+1, length)\
+    #                            if k != 0]
+    #         for k in modulation_list:
+    #             if coord[0]+k >=0 and coord[1]+k <= self._y :
+    #                 list_neigh.append((coord[0]+k,coord[1]))
+    #                 list_neigh.append((coord[0],coord[1]+k))
+    #     return list_neigh
+        
+    def show_neighbors(self, coord):
         """
         Method to color the neighboring cells and show them.
 
         Parameters
         ----------
-        x : (Int) x coordinates of the cell.
-        y : (Int) y coordinates of the cell.
-        length : (Int) Cell range for the search.
+        coord : tuple
+            The tuple include the X and Y coordinates.
 
         Returns
         -------
         None.
         """
-        if self._neighbors_length == length :
-            list_neigh = self.neighbors[(x, y)]
-        elif self._tor :
-            list_neigh = self.get_neighbors_tor(x, y, length)
-        else :
-            list_neigh = self.get_neighbors_tor(x, y, length)    
-        self.set_value(list_neigh, 100)
+        list_neigh = self.neighbors[coord]
+        self.set_values(list_neigh, 100)
         self.display()
         
-    def save(self):
+    def save(self, name):
         """
         Method intended to save the current grid into a list containing other 
         saved grid called "saved". To retrieve that list, just type 
         "<object>.saved".
+        
+        Parameters
+        ----------
+        name : str
+            Name of the array that will be stored.    
 
         Returns
         -------
         None.
         """
-        self.saved.append(self.grid.copy())
+        self.saved[name] = self.grid.copy()
         
     def coordinates(self):
         """
@@ -219,24 +283,39 @@ class Grid():
         self._neighbors_length = length
         self.neighbors = {}
         if self._tor :
-            for (x, y) in self.coord:
-                list_neigh = self.get_neighbors_tor(x, y, length)
-                self.neighbors[(x, y)] = list_neigh
+            for coord in self.coord:
+                list_neigh = self.get_neighbors_tor(coord, length, pattern)
+                self.neighbors[coord] = list_neigh
         else :
             for coord in self.coord:
                 list_neigh = self.get_neighbors(coord, length, pattern)
                 self.neighbors[coord] = list_neigh
                 
-    def display():
-        pass
-                
+    def display(self, colors="bone"):
+        """
+        Show the array as a graph.
+        
+        Parameters
+        ----------
+        colors : str
+            Color palette for the array.
+
+        Returns
+        -------
+        None.
+
+        """
+        plt.imshow(self.grid, cmap=colors)
+
+        
     def save_fig(self, name):
         """
         Save the current grid as an image.
 
         Parameters
         ----------
-        name : (Str) Name of the ouput file.
+        name : str
+            Name of the ouput file.
 
         Returns
         -------
@@ -244,9 +323,6 @@ class Grid():
 
         """
         self.display()
-        # plt.imshow(self.grid)
-        # plt.axes.get_xaxis().set_visible(False)
-        # plt.axes.get_yaxis().set_visible(False)
         plt.savefig(name, dpi=200)
         
     def upscale(array, factor=3):
@@ -275,11 +351,11 @@ class Grid():
                             upscaled[k, j] = 1
         return upscaled
         
-if __name__ == "__main__":  # exécuté sauf si le module est importé
+if __name__ == "__main__":
     t = Grid(10, 5)
     t.set_values([(0,0),(1,1),(2,2),(4,4)], 8)
     t.display()
-    t.compute_neighbors(length=1)
-    print(t.get_neighbors(2, 2))
-    print(t.get_neighbors_values(2, 2))
+    t.compute_neighbors(length=1, pattern="+")
+    print(t.get_neighbors((2, 2), pattern="+"))
+
     
