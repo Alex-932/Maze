@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Maze creation
+Maze creation and resolver class
 
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7 (20/03/22)
+@version: 0.7.1 (20/03/22)
 """
 
 from grid import Grid
 from random import shuffle
 import time
-
 
 class Mazy() :
 
@@ -37,6 +36,8 @@ class Mazy() :
         self.maze.set_values([self.exit_point], 3)
         
         self.maze_builder()
+        
+        self.runner_path = {}
 
     def driller(self, position, middle_point, next_point):
         if next_point != self.exit_point :
@@ -92,7 +93,7 @@ class Mazy() :
             primers += neighbors
             colored += neighbors
         self.maze.save(name="Distance")
-        self.start_distance = self.maze.get_values(self.start_point)
+        self.start_distance = self.maze.get_values(self.start_point)[0]
         self.maze.set_values([self.exit_point, self.start_point], \
                         max(self.maze.get_values(self.maze.coord))+10)
         self.maze.grid = self.maze.saved["Original"]
@@ -104,6 +105,62 @@ class Mazy() :
         print("Build time : ", time.time()-start_time, "s")
         self.maze.display()
         self.colored_map()
+    
+    def Joe(position, neighbors):
+        #Joe is a simple guy
+        shuffle(neighbors)
+        return neighbors.pop(), neighbors 
+        
+    def runner_choice(runner, position, neighbors):
+        if runner == "Joe":
+            return Mazy.Joe(position, neighbors)
+        
+    def path_shower(self, path, runner):
+        value = 2
+        for path in path :
+            self.maze.set_values(path, value)
+            value += 1
+        self.maze.save(runner)
+        self.maze.display("viridis")
+        self.maze.grid = self.maze.saved["Original"]
+
+    def maze_runner(self, runner="Joe"):
+        position = self.start_point
+        path = [[position]]
+        explored = []
+        crosspath = []
+        time = 0
+        while position != self.exit_point and time != -1:
+            time += 1
+            neighbors_raw = self.path_neighbors[position]
+            neighbors = [k for k in neighbors_raw if k not in explored]
+            neighbors_count = len(neighbors)
+            explored.append(position)
+            if neighbors_count == 0:
+                #Dead end so back to the beginning of the path
+                path[-1].append(position)
+                position = crosspath.pop()
+                path.append([position])
+            elif neighbors_count > 1:
+                #Crosspath so the runner algorithm has to choose a direction
+                choice, options = Mazy.runner_choice(runner, position, \
+                                                     neighbors)
+                path[-1].append(position)
+                path.append([choice])
+                crosspath += options
+                position = choice
+            else :
+                #We continue down the path
+                path[-1].append(position)
+                position = neighbors[0]
+        self.path_shower(path, runner)
+        self.runner_path[runner] = {"Explored": explored, "Path": path}
+        
+                
+                
+            
+                
         
 if __name__ == "__main__":
     maze = Mazy(mode="fast")
+    t = maze.maze_runner()
