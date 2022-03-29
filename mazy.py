@@ -5,7 +5,7 @@ Maze creation and resolver class
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7.1 (20/03/22)
+@version: 0.7.1 (29/03/22)
 """
 
 from grid import Grid
@@ -105,15 +105,26 @@ class Mazy() :
         print("Build time : ", time.time()-start_time, "s")
         self.maze.display()
         self.colored_map()
-    
-    def Joe(position, neighbors):
+        
+    def get_orientation(self, position, prev_position, mode="Relative"):
+        orientation = {}
+        if mode == "Relative":
+            pass
+        elif mode == "Absolute":
+            labels = ["West","North","East","South"]
+            neighbors = maze.maze.get_neighbors(position, pattern="+")
+            for k in range(len(neighbors)):
+                orientation[neighbors[k]] = labels[k]
+        return orientation
+            
+    def Joe(position, prev_position, neighbors):
         #Joe is a simple guy
         shuffle(neighbors)
         return neighbors.pop(), neighbors 
         
-    def runner_choice(runner, position, neighbors):
+    def runner_choice(runner, position, prev_position, neighbors):
         if runner == "Joe":
-            return Mazy.Joe(position, neighbors)
+            return Mazy.Joe(position, prev_position, neighbors)
         
     def path_shower(self, path, runner):
         value = 2
@@ -139,20 +150,20 @@ class Mazy() :
             if neighbors_count == 0:
                 #Dead end so back to the beginning of the path
                 path[-1].append(position)
-                position = crosspath.pop()
+                prev_position, position = position, crosspath.pop()
                 path.append([position])
             elif neighbors_count > 1:
                 #Crosspath so the runner algorithm has to choose a direction
                 choice, options = Mazy.runner_choice(runner, position, \
-                                                     neighbors)
+                                                     prev_position, neighbors)
                 path[-1].append(position)
                 path.append([choice])
                 crosspath += options
-                position = choice
+                prev_position, position = choice
             else :
                 #We continue down the path
                 path[-1].append(position)
-                position = neighbors[0]
+                prev_position, position = position, neighbors[0]
         self.path_shower(path, runner)
         self.runner_path[runner] = {"Explored": explored, "Path": path}
         
