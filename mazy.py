@@ -108,23 +108,44 @@ class Mazy() :
         
     def get_orientation(self, position, prev_position, mode="Relative"):
         orientation = {}
+        labels = ["West","North","East","South"]
+        neighbors = maze.maze.get_neighbors(position, pattern="+")
+        for k in range(len(neighbors)):
+            orientation[neighbors[k]] = labels[k]
         if mode == "Relative":
-            pass
-        elif mode == "Absolute":
-            labels = ["West","North","East","South"]
-            neighbors = maze.maze.get_neighbors(position, pattern="+")
-            for k in range(len(neighbors)):
-                orientation[neighbors[k]] = labels[k]
+            labels = ["Left","Forward","Right"]
+            start_index = {"East":1, "North":2, "West":3,"South":0}
+            rearranged_dir = [neighbors[k] for k in \
+                              [2, 1, 0, 3, 2, 1, 0]]
+            #E,N,W,S,E,N,W
+            starter = start_index[orientation[prev_position]]
+            orientation = {
+                "Right": rearranged_dir[starter],
+                "Forward": rearranged_dir[starter+1],
+                "Left": rearranged_dir[starter+2]
+                }
         return orientation
             
     def Joe(position, prev_position, neighbors):
         #Joe is a simple guy
         shuffle(neighbors)
-        return neighbors.pop(), neighbors 
+        return neighbors.pop(), neighbors
+    
+    def Arthur(self, position, prev_position, neighbors):
+        #Arthur always goes to the Right
+        orientation_table = self.get_orientation(position, prev_position)
+        ordered_directions = [orientation_table[k] \
+                              for k in ["Right","Forward","Left"]\
+                                  if orientation_table[k] in neighbors]
+        return ordered_directions.pop(), ordered_directions
+                
         
-    def runner_choice(runner, position, prev_position, neighbors):
+        
+    def runner_choice(self, runner, position, prev_position, neighbors):
         if runner == "Joe":
             return Mazy.Joe(position, prev_position, neighbors)
+        if runner == "Arthur":
+            return Mazy.Arthur(self, position, prev_position, neighbors)
         
     def path_shower(self, path, runner):
         value = 2
@@ -140,9 +161,8 @@ class Mazy() :
         path = [[position]]
         explored = []
         crosspath = []
-        time = 0
-        while position != self.exit_point and time != -1:
-            time += 1
+        prev_position = (0,1)
+        while position != self.exit_point:
             neighbors_raw = self.path_neighbors[position]
             neighbors = [k for k in neighbors_raw if k not in explored]
             neighbors_count = len(neighbors)
@@ -154,7 +174,7 @@ class Mazy() :
                 path.append([position])
             elif neighbors_count > 1:
                 #Crosspath so the runner algorithm has to choose a direction
-                choice, options = Mazy.runner_choice(runner, position, \
+                choice, options = self.runner_choice(runner, position, \
                                                      prev_position, neighbors)
                 path[-1].append(position)
                 path.append([choice])
@@ -174,4 +194,5 @@ class Mazy() :
         
 if __name__ == "__main__":
     maze = Mazy(mode="fast")
-    t = maze.maze_runner()
+    t = maze.maze_runner("Joe")
+    t2 = maze.maze_runner("Arthur")
