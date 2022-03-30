@@ -12,9 +12,23 @@ from grid import Grid
 from random import shuffle
 import time
 
-class Mazy() :
+class Mazy():
 
     def __init__(self, mode="config"):
+        """
+        The Mazy class provide algorithms to create and resolve a maze.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Intended for benchmarking. The default is "config".
+            The other option is "fast" which set the variables.
+
+        Returns
+        -------
+        None.
+
+        """
         
         if mode == "fast":
             self._y = 21
@@ -43,6 +57,26 @@ class Mazy() :
         self.runner_path = {}
 
     def driller(self, position, middle_point, next_point):
+        """
+        Set the values of the given cells to 1 which is the value of a 
+        "path" cell.
+
+        Parameters
+        ----------
+        position : tuple
+            Coordinates of the current position of the runner.
+        middle_point : tuple
+            Coordinates of the next cell on the path the runner is 
+            going to take.
+        next_point : tuple
+            Coordinates of the cell where the runner will 
+            make a break before the next move.
+
+        Returns
+        -------
+        None.
+
+        """
         if next_point != self.exit_point :
             coord_list = [next_point, middle_point]
         else :
@@ -51,38 +85,72 @@ class Mazy() :
     
 
     def worker(self):
+        """
+        Worker is the algorithm that create the maze.
+
+        Returns
+        -------
+        None.
+
+        """
         primers = [self.start_point]
+        #List that save the coordinates of the paths that the worker can take.
+        #For example, at each cell, the worker can go one direction and the 
+        #others are added to that list to come back at them later.  
         self.drilled = [self.start_point]
+        #List that save the cell that are now "path".
         while len(primers) != 0:
             shuffle(primers)
             (px, py) = primers.pop()
+            #A random primer or starter is chosen.
             options = [(x, y) for (x, y) in \
                        [(px-2, py), (px, py+2), (px+2, py), (px, py-2)] \
                            if x in range(self._x) \
                                and y in range(self._y) \
                                    and (x, y) not in self.drilled]
+            #That list contains the neighboring cells coordinates that the
+            #worker can drill.
             shuffle(options)
             if len(options) >= 1 :
+                #We make sure there are options available for our worker.
+                #Else it's a dead end so we lookback to choose another primer.
                 next_p = options.pop()
+                #Worker destination.
                 mid_p = (int(px+(next_p[0]-px)/2), int(py+(next_p[1]-py)/2))
+                #Coordinates between the current position and the destination.
                 self.driller((px, py), mid_p, next_p)
+                #We drill the cells. 
                 self.drilled.append(next_p)
                 self.drilled.append(mid_p)
+                #The drilled cells are added to the "drilled" list.
                 primers += [(px, py), next_p]
-                
+                #We add the coordinates of the cell that the 
+                #worker could continue from.
+        #We finally add all drilled cell to "drilled".
         for coord in self.maze.coord :
             if self.maze.get_values(coord)[0] == 1 \
                 and coord not in self.drilled:
                 self.drilled.append(coord)
-                
+        #We save the maze in order to use it later.        
         self.maze.save(name="Original")
             
     def compute_path_neighbors(self):
+        """
+        Method to generate a dictionnary (self.path_neighbors) containing, 
+        for each path cell, all neighboring cells that are also path cell. 
+        Used to speed up process.
+
+        Returns
+        -------
+        None.
+
+        """
         for k in self.drilled:
             neighbors = [coord for coord in \
                          self.maze.get_neighbors(k, pattern="+")\
                          if coord in self.drilled]
             self.path_neighbors[k] = neighbors
+            #labels are the coordinates (x, y) and gives back a list of tuple.
     
     def colored_map(self):
         colored = [self.exit_point]
