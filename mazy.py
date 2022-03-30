@@ -145,7 +145,7 @@ class Mazy() :
         if runner == "Joe":
             return Mazy.Joe(position, prev_position, neighbors)
         if runner == "Arthur":
-            return Mazy.Arthur(self, position, prev_position, neighbors)
+            return self.Arthur(position, prev_position, neighbors)
         
     def path_shower(self, path, runner):
         value = 2
@@ -161,7 +161,7 @@ class Mazy() :
         path = [[position]]
         explored = []
         crosspath = []
-        prev_position = (0,1)
+        prev_position = (0, 1)
         while position != self.exit_point:
             neighbors_raw = self.path_neighbors[position]
             neighbors = [k for k in neighbors_raw if k not in explored]
@@ -179,18 +179,14 @@ class Mazy() :
                 path[-1].append(position)
                 path.append([choice])
                 crosspath += options
-                prev_position, position = choice
+                prev_position, position = position, choice
             else :
                 #We continue down the path
                 path[-1].append(position)
                 prev_position, position = position, neighbors[0]
         self.path_shower(path, runner)
-        self.runner_path[runner] = {"Explored": explored, "Path": path}
-        
-                
-                
-            
-                
+        self.runner_path[runner] = {"Explored": explored, "Path": path,\
+                                    "Distance": len(explored)}
         
 if __name__ == "__main__":
     maze = Mazy(mode="fast")
