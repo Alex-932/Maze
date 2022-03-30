@@ -5,7 +5,7 @@ Maze creation and resolver class
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7.1 (29/03/22)
+@version: 0.7.2 (29/03/22)
 """
 
 from grid import Grid
@@ -28,6 +28,9 @@ class Mazy() :
             self._y = int(input("Y dimension (uneven only) : "))
             self._x = int(input("X dimension (uneven only) : "))
             self._tor = bool(int(input("Is the maze toroidal ? (1 or 0) ")))
+            self.start_point = (1, 1)
+            self.exit_point = (self._x-2, self._y-2)
+            self.maze = Grid(self._x, self._y, tor=self._tor, value=0)
             
         self.drilled = []
         self.path_neighbors = {}
