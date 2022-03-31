@@ -8,7 +8,7 @@ Grid class to make working with numpy arrays much easier
 import numpy
 import matplotlib.pyplot as plt
 
-class Grid():
+class grid():
     """
     Generate numpy grids and provide methods to work with it.
     """
@@ -291,12 +291,15 @@ class Grid():
                 list_neigh = self.get_neighbors(coord, length, pattern)
                 self.neighbors[coord] = list_neigh
                 
-    def display(self, colors="bone"):
+    def display(self, grid="Current", colors="bone"):
         """
         Show the array as a graph.
         
         Parameters
         ----------
+        grid : str
+            Name of the grid in the self.saved dictionnary. 
+            Default is "Current" which is the current grid.
         colors : str
             Color palette for the array.
 
@@ -305,8 +308,15 @@ class Grid():
         None.
 
         """
-        plt.imshow(self.grid, cmap=colors)
-
+        if grid == "Current" :
+            plt.imshow(self.grid, cmap=colors)
+        else :
+            try : 
+                plt.imshow(self.saved[grid], cmap=colors)
+            except KeyError :
+                print("The given grid name isn't in the saved grid !")
+                print("Current grid is shown instead.")
+                plt.imshow(self.grid, cmap=colors)
         
     def save_fig(self, name):
         """
@@ -352,7 +362,7 @@ class Grid():
         return upscaled
         
 if __name__ == "__main__":
-    t = Grid(10, 5)
+    t = grid(10, 5)
     t.set_values([(0,0),(1,1),(2,2),(4,4)], 8)
     t.display()
     t.compute_neighbors(length=1, pattern="+")

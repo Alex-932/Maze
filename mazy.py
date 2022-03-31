@@ -5,10 +5,10 @@ Maze creation and resolver class
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7.2 (29/03/22)
+@version: 0.7.3 (29/03/22)
 """
 
-from grid import Grid
+from grid import grid
 from random import shuffle
 import time
 
@@ -36,7 +36,7 @@ class mazy():
             self._tor = False
             self.start_point = (1, 1)
             self.exit_point = (self._x-2, self._y-2)
-            self.maze = Grid(self._x, self._y, tor=self._tor, value=0)
+            self.maze = grid(self._x, self._y, tor=self._tor, value=0)
             
         elif mode == "config":
             self._y = int(input("Y dimension (uneven only) : "))
@@ -44,7 +44,7 @@ class mazy():
             self._tor = bool(int(input("Is the maze toroidal ? (1 or 0) ")))
             self.start_point = (1, 1)
             self.exit_point = (self._x-2, self._y-2)
-            self.maze = Grid(self._x, self._y, tor=self._tor, value=0)
+            self.maze = grid(self._x, self._y, tor=self._tor, value=0)
             
         self.drilled = []
         self.path_neighbors = {}
@@ -237,7 +237,7 @@ class mazy():
         """
         orientation = {}
         labels = ["West","North","East","South"]
-        #Labels are the absolute direction given by the Grid.get_neighbors()
+        #Labels are the absolute direction given by the grid.get_neighbors()
         #method.
         neighbors = self.maze.get_neighbors(position, pattern="+")
         #Neighbors of the current position cell are reprocessed and retrieved.
@@ -248,7 +248,7 @@ class mazy():
             labels = ["Left","Forward","Right"]
             #There's only 3 directions as backward is useless
             start_index = {"East":1, "North":2, "West":3,"South":0}
-            #Grid.get_neighbors() return neighboring cells in the specific 
+            #grid.get_neighbors() return neighboring cells in the specific 
             #order : West, North, East, South.
             #rearranged_dir contains the coordinates of the cell in a specific
             #order allow us to compute faster : E,N,W,S,E,N,W.
@@ -267,9 +267,10 @@ class mazy():
                 }
         return orientation
             
-    def Joe(position, prev_position, neighbors):
+    def ICR(position, prev_position, neighbors):
         """
-        Joe is a simple guy, he choose a path randomly.
+        ICR is a simple guy, he choose a path randomly.
+        ICR stands for I Choose Randomly.
 
         Parameters
         ----------
@@ -291,10 +292,46 @@ class mazy():
         shuffle(neighbors)
         return neighbors.pop(), neighbors
     
-    def Arthur(self, position, prev_position, neighbors):
+    def IGR(self, position, prev_position, neighbors):
         """
-        Arthur always choose the rightmostpath. So the directions in that 
+        IGR always choose the rightmostpath. So the directions in that 
         order : Right, Forward, Left.
+        IGR stands for I Go Right.
+
+        Parameters
+        ----------
+        position : tuple
+            Coordinates of the current cell the runner is on.
+        prev_position : tuple
+            Previous position of the runner.
+        neighbors : list of tuple
+            Coordinates of the neighboring cells from the current position.
+
+        Returns
+        -------
+        tuple
+            Coordinates of the first cell of the path the runner will take.
+        neighbors : list of tuple
+            Coordinates of the other paths the runner could take later.
+
+        """
+        orientation_table = self.get_orientation(position, prev_position)
+        ordered_directions = [k for k in orientation_table \
+                                  if k in neighbors]
+        #We just make sure that the directions provided by the 
+        #mazy.get_orientation are actual paths.
+        ordered_directions.reverse()
+        #That list is reversed so the directions are "Left" then "Forward".
+        #Important because later, in the case of a deadend, the last value of 
+        #the intesrection list will be taken which would be "Left" if not 
+        #reversed.
+        return ordered_directions.pop(0), ordered_directions
+    
+    def IGL(self, position, prev_position, neighbors):
+        """
+        IGL always choose the leftmostpath. So the directions in that 
+        order : Left, Forward, Right.
+        IGL stands for I Go Left.
 
         Parameters
         ----------
@@ -343,10 +380,12 @@ class mazy():
             Coordinates of the other paths the runner could take later.
 
         """
-        if runner == "Joe":
-            return mazy.Joe(position, prev_position, neighbors)
-        if runner == "Arthur":
-            return self.Arthur(position, prev_position, neighbors)
+        if runner == "ICR":
+            return mazy.ICR(position, prev_position, neighbors)
+        elif runner == "IGR":
+            return self.IGR(position, prev_position, neighbors)
+        elif runner == "IGL":
+            return self.IGL(position, prev_position, neighbors)
         
     def path_shower(self, paths, runner):
         """
@@ -374,20 +413,20 @@ class mazy():
             #to the latest took path
         self.maze.save(runner)
         #The maze grid is saved with its name.
-        self.maze.display("viridis")
+        self.maze.display(colors="viridis")
         self.maze.grid = self.maze.saved["Original"]
         #The maze grid is set back to the clean and original maze in order to 
         #continue working with it.
         
 
-    def maze_runner(self, runner="Joe"):
+    def maze_runner(self, runner="ICR"):
         """
         Algorithm to solve the maze
 
         Parameters
         ----------
         runner : str, optional
-            Name of the runner. The default is "Joe".
+            Name of the runner. The default is "ICR".
 
         Returns
         -------
@@ -398,37 +437,65 @@ class mazy():
         #position is a tuple with the coordinates of 
         #the current position of the runner. 
         path = [[position]]
-        #List of the taken paths
+        #List of all the taken paths where each sublist is a whole path between
+        #2 intersections.
         explored = []
-        crosspath = []
+        #List of all explored cells' coordinates. 
+        intersections = []
+        #List of available coordinates of the first cell of explorable paths.
         prev_position = (0, 1)
+        #tuple with the coordinates of the previous position the runner was.
         while position != self.exit_point:
+            #The runner continues to explore while he hasn't get to 
+            #the exit_point 
             neighbors_raw = self.path_neighbors[position]
+            #Raw list of the neighboring cells from the current position.
+            #Those neighbors are paths but they could've been already explored.
             neighbors = [k for k in neighbors_raw if k not in explored]
+            #neighbors_raw list filtered as only the unexplored cells remains.
             neighbors_count = len(neighbors)
+            #Number of possibilities for the runner to choose.
             explored.append(position)
             if neighbors_count == 0:
-                #Dead end so back to the beginning of the path
+                #Deadend so the runner goes back to the last intersection.
                 path[-1].append(position)
-                prev_position, position = position, crosspath.pop()
+                prev_position, position = position, intersections.pop()
                 path.append([position])
+                #New sublist in path as the runner will take a new path.
             elif neighbors_count > 1:
-                #Crosspath so the runner algorithm has to choose a direction
+                #Intersections so the runner algorithm 
+                #has to choose a direction
                 choice, options = self.runner_selector(runner, position, \
                                                      prev_position, neighbors)
+                #choice is the first cell of the path that the runner 
+                #will take. options is the list of other path the runner could 
+                #take.
                 path[-1].append(position)
+                #The current position is saved in the current path sublist.
                 path.append([choice])
-                crosspath += options
+                #The next position (called choice) is added in a new sublist.
+                intersections += options
+                #The other paths first cell coordintes are added to the list 
+                #of intersections.
                 prev_position, position = position, choice
+                #The runner move so we update the current and previous 
+                #position.
             else :
-                #We continue down the path
+                #There are no intersection neither deadend so the runner 
+                #continues down the path.
                 path[-1].append(position)
                 prev_position, position = position, neighbors[0]
+                #The current and previous position are updated.
         self.path_shower(path, runner)
+        #The journey of the runner is shown and saved.
         self.runner_path[runner] = {"Explored": explored, "Path": path,\
                                     "Distance": len(explored)}
+        #The explored cells, the paths that were taken and the total 
+        #cell-distance travelled by the runner are saved in the 
+        #self.runner_path dictionnary.
         
 if __name__ == "__main__":
     maze = mazy(mode="fast")
-    t = maze.maze_runner("Joe")
-    t2 = maze.maze_runner("Arthur")
+    maze.maze_runner("ICR")
+    maze.maze_runner("IGR")
+    maze.maze_runner("IGL")
