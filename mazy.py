@@ -12,11 +12,11 @@ from grid import Grid
 from random import shuffle
 import time
 
-class Mazy():
+class mazy():
 
     def __init__(self, mode="config"):
         """
-        The Mazy class provide algorithms to create and resolve a maze.
+        The mazy class provide algorithms to create and resolve a maze.
 
         Parameters
         ----------
@@ -150,86 +150,255 @@ class Mazy():
                          self.maze.get_neighbors(k, pattern="+")\
                          if coord in self.drilled]
             self.path_neighbors[k] = neighbors
-            #labels are the coordinates (x, y) and gives back a list of tuple.
+            #keys are the coordinates (x, y) and values are a list of tuple.
     
-    def colored_map(self):
+    def maze_coloration(self):
+        """
+        Method to color the maze. The color scale represent the distance to
+        the exit point. The brighter the color is, the farthest the cell is.
+        The colored maze is saved as "Distance" in self.maze.saved.
+        
+        Returns
+        -------
+        None.
+
+        """
         colored = [self.exit_point]
+        #Colored is a list which save the cell that are already colored.
         primers = colored.copy()
+        #Primers as the same function as in the worker method.
         while len(self.drilled) != len(colored) :
+            #The coloration continue as long as all drilled (or path) cell 
+            #aren't colored.
             position = primers.pop()
             neighbors = [coord for coord in self.path_neighbors[position] \
                          if coord not in colored]
+            #Neighbors stores the neighboring cells that are not colored.
             self.maze.set_values(neighbors, \
                                  self.maze.get_values(position)[0]+1)
+            #The value of those neighbors cell is set as the value of the 
+            #current cell + 1.
             primers += neighbors
             colored += neighbors
+            #Neighbors are added to the primers list to continue 
+            #the coloration to their neighbors and so on. They're also added
+            #to the colored list in order not to reprocess them.
         self.maze.save(name="Distance")
+        #The colored maze is saved as "Distance" in self.maze.saved.
         self.start_distance = self.maze.get_values(self.start_point)[0]
+        #The value of the start_point is saved as it is a quality index.
         self.maze.set_values([self.exit_point, self.start_point], \
                         max(self.maze.get_values(self.maze.coord))+10)
+        #The cell value of start_point and exit_point are replaced with the 
+        #maximum value of the maze's cells +10 to better see them in the graph.
         self.maze.grid = self.maze.saved["Original"]
+        #The maze grid is set back to the clean and original maze in order to 
+        #continue working with it.
 
     def maze_builder(self):
+        """
+        Method that create the maze and execute some methods that will be
+        needed in order to solve the maze. 
+
+        Returns
+        -------
+        None.
+
+        """
         start_time = time.time()    
         self.worker()
         self.compute_path_neighbors()
         print("Build time : ", time.time()-start_time, "s")
         self.maze.display()
-        self.colored_map()
+        self.maze_coloration()
         
     def get_orientation(self, position, prev_position, mode="Relative"):
+        """
+        Method used to resolve the maze. It compute the directions of
+        the neighboring cell of the given position.
+
+        Parameters
+        ----------
+        position : tuple
+            Coordinates of the current cell the runner is on.
+        prev_position : tuple
+            Previous position of the runner.
+        mode : str, optional
+            How the direction are returned. The default is "Relative".
+            "Relative" : direction relative to the runner (Right, Left, ...)
+            "Absolute" : direction relative the maze (North, East, ...)
+
+        Returns
+        -------
+        orientation : dict
+            Keys are the coordinates of the neighboring cell (tuple). 
+            Values are the direction for the neighbor cell (str).
+
+        """
         orientation = {}
         labels = ["West","North","East","South"]
-        neighbors = maze.maze.get_neighbors(position, pattern="+")
+        #Labels are the absolute direction given by the Grid.get_neighbors()
+        #method.
+        neighbors = self.maze.get_neighbors(position, pattern="+")
+        #Neighbors of the current position cell are reprocessed and retrieved.
         for k in range(len(neighbors)):
             orientation[neighbors[k]] = labels[k]
+            #Each cell coordinates gets its absolute orientation.
         if mode == "Relative":
             labels = ["Left","Forward","Right"]
+            #There's only 3 directions as backward is useless
             start_index = {"East":1, "North":2, "West":3,"South":0}
+            #Grid.get_neighbors() return neighboring cells in the specific 
+            #order : West, North, East, South.
+            #rearranged_dir contains the coordinates of the cell in a specific
+            #order allow us to compute faster : E,N,W,S,E,N,W.
             rearranged_dir = [neighbors[k] for k in \
                               [2, 1, 0, 3, 2, 1, 0]]
-            #E,N,W,S,E,N,W
+            #Each time, we get the direction of the previous cell the runner 
+            #was. The 3 previous coordinates in rearranged_dir are exactly in
+            #that specific order : Right, Forward, Left.
             starter = start_index[orientation[prev_position]]
+            #starter is the index from where to begin in rearranged_dir to get
+            #the right coordinates.
             orientation = {
-                "Right": rearranged_dir[starter],
-                "Forward": rearranged_dir[starter+1],
-                "Left": rearranged_dir[starter+2]
+                rearranged_dir[starter]: "Right",
+                rearranged_dir[starter+1]: "Forward",
+                rearranged_dir[starter+2]: "Left"
                 }
         return orientation
             
     def Joe(position, prev_position, neighbors):
-        #Joe is a simple guy
+        """
+        Joe is a simple guy, he choose a path randomly.
+
+        Parameters
+        ----------
+        position : tuple
+            Coordinates of the current cell the runner is on.
+        prev_position : tuple
+            Previous position of the runner.
+        neighbors : list of tuple
+            Coordinates of the neighboring cells from the current position.
+
+        Returns
+        -------
+        tuple
+            Coordinates of the first cell of the path the runner will take.
+        neighbors : list of tuple
+            Coordinates of the other paths the runner could take later.
+
+        """
         shuffle(neighbors)
         return neighbors.pop(), neighbors
     
     def Arthur(self, position, prev_position, neighbors):
-        #Arthur always goes to the Right
+        """
+        Arthur always choose the rightmostpath. So the directions in that 
+        order : Right, Forward, Left.
+
+        Parameters
+        ----------
+        position : tuple
+            Coordinates of the current cell the runner is on.
+        prev_position : tuple
+            Previous position of the runner.
+        neighbors : list of tuple
+            Coordinates of the neighboring cells from the current position.
+
+        Returns
+        -------
+        tuple
+            Coordinates of the first cell of the path the runner will take.
+        neighbors : list of tuple
+            Coordinates of the other paths the runner could take later.
+
+        """
         orientation_table = self.get_orientation(position, prev_position)
-        ordered_directions = [orientation_table[k] \
-                              for k in ["Right","Forward","Left"]\
-                                  if orientation_table[k] in neighbors]
+        ordered_directions = [k for k in orientation_table \
+                                  if k in neighbors]
+        #We just make sure that the directions provided by the 
+        #mazy.get_orientation are actual paths.
         return ordered_directions.pop(), ordered_directions
-                
         
-        
-    def runner_choice(self, runner, position, prev_position, neighbors):
+    def runner_selector(self, runner, position, prev_position, neighbors):
+        """
+        Simply run the given runner algorithm.
+
+        Parameters
+        ----------
+        runner : str
+            Name of the runner.
+        position : tuple
+            Coordinates of the current cell the runner is on.
+        prev_position : tuple
+            Previous position of the runner.
+        neighbors : list of tuple
+            Coordinates of the neighboring cells from the current position.
+
+        Returns
+        -------
+        tuple
+            Coordinates of the first cell of the path the runner will take.
+        list of tuple
+            Coordinates of the other paths the runner could take later.
+
+        """
         if runner == "Joe":
-            return Mazy.Joe(position, prev_position, neighbors)
+            return mazy.Joe(position, prev_position, neighbors)
         if runner == "Arthur":
             return self.Arthur(position, prev_position, neighbors)
         
-    def path_shower(self, path, runner):
+    def path_shower(self, paths, runner):
+        """
+        Color the maze. The brighter the color is the latest that path as been
+        taken. It color the whole path (between 2 intersections) 
+        with the same color.
+
+        Parameters
+        ----------
+        paths : list of list
+            Each sublist is a whole path (between 2 instersections).
+        runner : str
+            Name of the runner.
+
+        Returns
+        -------
+        None.
+
+        """
         value = 2
-        for path in path :
+        for path in paths :
             self.maze.set_values(path, value)
             value += 1
+            #The paths in the paths list is ordered from the earliest took path
+            #to the latest took path
         self.maze.save(runner)
+        #The maze grid is saved with its name.
         self.maze.display("viridis")
         self.maze.grid = self.maze.saved["Original"]
+        #The maze grid is set back to the clean and original maze in order to 
+        #continue working with it.
+        
 
     def maze_runner(self, runner="Joe"):
+        """
+        Algorithm to solve the maze
+
+        Parameters
+        ----------
+        runner : str, optional
+            Name of the runner. The default is "Joe".
+
+        Returns
+        -------
+        None.
+
+        """
         position = self.start_point
+        #position is a tuple with the coordinates of 
+        #the current position of the runner. 
         path = [[position]]
+        #List of the taken paths
         explored = []
         crosspath = []
         prev_position = (0, 1)
@@ -245,7 +414,7 @@ class Mazy():
                 path.append([position])
             elif neighbors_count > 1:
                 #Crosspath so the runner algorithm has to choose a direction
-                choice, options = self.runner_choice(runner, position, \
+                choice, options = self.runner_selector(runner, position, \
                                                      prev_position, neighbors)
                 path[-1].append(position)
                 path.append([choice])
@@ -260,6 +429,6 @@ class Mazy():
                                     "Distance": len(explored)}
         
 if __name__ == "__main__":
-    maze = Mazy(mode="fast")
+    maze = mazy(mode="fast")
     t = maze.maze_runner("Joe")
     t2 = maze.maze_runner("Arthur")
