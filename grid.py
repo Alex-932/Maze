@@ -291,7 +291,7 @@ class grid():
                 list_neigh = self.get_neighbors(coord, length, pattern)
                 self.neighbors[coord] = list_neigh
                 
-    def display(self, grid="Current", colors="bone"):
+    def display(self, grid_id="Current", colors="bone"):
         """
         Show the array as a graph.
         
@@ -308,15 +308,19 @@ class grid():
         None.
 
         """
-        if grid == "Current" :
-            plt.imshow(self.grid, cmap=colors)
+        if grid_id == "Current" :
+            plt.imshow(self.grid, cmap=colors, interpolation='nearest')
+            plt.axis('off')
         else :
             try : 
-                plt.imshow(self.saved[grid], cmap=colors)
+                plt.imshow(self.saved[grid_id], cmap=colors, \
+                           interpolation='nearest')
+                plt.axis('off')
             except KeyError :
                 print("The given grid name isn't in the saved grid !")
                 print("Current grid is shown instead.")
-                plt.imshow(self.grid, cmap=colors)
+                plt.imshow(self.grid, cmap=colors, interpolation='nearest')
+                plt.axis('off')
         
     def save_fig(self, name):
         """

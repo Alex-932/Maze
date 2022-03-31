@@ -5,56 +5,55 @@ Maze creation and resolver class
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7.4
+@version: 0.7.5
 """
 
 from grid import grid
-from random import shuffle
+from random import shuffle, randrange
 from math import sqrt
 import time
 
 class mazy():
 
-    def __init__(self, mode="config"):
+    def __init__(self, x=31, y=21, workman="IDE", tor=False, GUI=False):
         """
         The mazy class provide algorithms to create and resolve a maze.
 
         Parameters
         ----------
-        mode : str, optional
-            Intended for benchmarking. The default is "config".
-            The other option is "fast" which set the variables.
-
+        x : int
+            X size of the maze. The default is 31.
+        y : int
+            Y size of the maze. The default is 21.
+        workman : str, optional
+            Change the mode of drilling of the maze. The default is "IDE".
+        tor : bool, optional
+            Set the maze as a toroidal space or not. The default is False.
+        GUI : bool, optional
+            Allow the customization of the maze through a simple GUI.
+        
         Returns
         -------
         None.
 
         """
-        
-        if mode == "fast":
-            self._y = 21
-            self._x = 31
-            self._tor = False
-            self.start_point = (1, 1)
-            self.exit_point = (self._x-2, self._y-2)
-            self.maze = grid(self._x, self._y, tor=self._tor, value=0)
-            
-        elif mode == "config":
+        if GUI == True:
             self._y = int(input("Y dimension (uneven only) : "))
             self._x = int(input("X dimension (uneven only) : "))
             self._tor = bool(int(input("Is the maze toroidal ? (1 or 0) ")))
-            self.start_point = (1, 1)
-            self.exit_point = (self._x-2, self._y-2)
-            self.maze = grid(self._x, self._y, tor=self._tor, value=0)
-            
+            self._workman = input("Workman (IDE or IGS): ")
+        self._y = y
+        self._x = x
+        self._tor = tor
+        self._workman = workman
+        self.start_point = (1, 1)
+        self.exit_point = (self._x-2, self._y-2)
+        self.maze = grid(self._x, self._y, tor=self._tor, value=0)
         self.drilled = []
         self.path_neighbors = {}
-
         self.maze.set_values([self.start_point], 2)
         self.maze.set_values([self.exit_point], 3)
-        
         self.maze_builder()
-        
         self.runner_path = {}
 
     def driller(self, position, middle_point, next_point):
@@ -83,8 +82,27 @@ class mazy():
         else :
             coord_list = [middle_point]
         self.maze.set_values(coord_list, 1)
+        
+    def worker_core(self, workman, primers):
+        if workman == "IDE":
+            shuffle(primers)
+            (px, py) = primers.pop()
+        elif workman == "IGS":
+            if len(primers) >= 2:
+                (px, py) = primers.pop(-randrange(0,2))
+            else :
+                (px, py) = primers.pop()
+        #A random primer or starter is chosen.
+        options = [(x, y) for (x, y) in \
+                   [(px-2, py), (px, py+2), (px+2, py), (px, py-2)] \
+                       if x in range(self._x) \
+                           and y in range(self._y) \
+                               and (x, y) not in self.drilled]
+        #That list contains the neighboring cells coordinates that the
+        #worker can drill.
+        shuffle(options)
+        return px, py, options        
     
-
     def worker(self):
         """
         Worker is the algorithm that create the maze.
@@ -101,20 +119,11 @@ class mazy():
         self.drilled = [self.start_point]
         #List that save the cell that are now "path".
         while len(primers) != 0:
-            shuffle(primers)
-            (px, py) = primers.pop()
-            #A random primer or starter is chosen.
-            options = [(x, y) for (x, y) in \
-                       [(px-2, py), (px, py+2), (px+2, py), (px, py-2)] \
-                           if x in range(self._x) \
-                               and y in range(self._y) \
-                                   and (x, y) not in self.drilled]
-            #That list contains the neighboring cells coordinates that the
-            #worker can drill.
-            shuffle(options)
-            if len(options) >= 1 :
+            px, py, options = self.worker_core(self._workman, primers)
+            options_count = len(options)
+            if options_count >= 1 :
                 #We make sure there are options available for our worker.
-                #Else it's a dead end so we lookback to choose another primer.
+                #Else it's a deadend so we lookback to choose another primer.
                 next_p = options.pop()
                 #Worker destination.
                 mid_p = (int(px+(next_p[0]-px)/2), int(py+(next_p[1]-py)/2))
@@ -124,7 +133,11 @@ class mazy():
                 self.drilled.append(next_p)
                 self.drilled.append(mid_p)
                 #The drilled cells are added to the "drilled" list.
-                primers += [(px, py), next_p]
+                if next_p != self.exit_point:
+                    if options_count == 1:
+                        primers += [next_p]
+                    else :
+                        primers += [(px, py), next_p]
                 #We add the coordinates of the cell that the 
                 #worker could continue from.
         #We finally add all drilled cell to "drilled".
@@ -192,7 +205,7 @@ class mazy():
                         max(self.maze.get_values(self.maze.coord))+10)
         #The cell value of start_point and exit_point are replaced with the 
         #maximum value of the maze's cells +10 to better see them in the graph.
-        self.maze.grid = self.maze.saved["Original"]
+        self.maze.grid = self.maze.saved["Original"].copy()
         #The maze grid is set back to the clean and original maze in order to 
         #continue working with it.
 
@@ -209,7 +222,7 @@ class mazy():
         start_time = time.time()    
         self.worker()
         self.compute_path_neighbors()
-        print("Build time : ", time.time()-start_time, "s")
+        self.build_time = time.time()-start_time
         self.maze.display()
         self.maze_coloration()
         
@@ -395,8 +408,7 @@ class mazy():
                     movement = True
         #We bubble sort the euclid distance from the longest to the smallest.
         choice = distance.pop()[1]
-        return choice, [k[1] for k in distance]
-            
+        return choice, [k[1] for k in distance]   
         
     def runner_selector(self, runner, position, prev_position, neighbors):
         """
@@ -429,6 +441,15 @@ class mazy():
             return self.IGL(position, prev_position, neighbors)
         elif runner == "IAE":
             return self.IAE(position, neighbors)
+        elif runner == "IFS":
+            if self.flip == True:
+                self.flip = False
+                return self.IGR(position, prev_position, neighbors)
+            else :
+                self.flip = True
+                return self.IGL(position, prev_position, neighbors)
+        else :
+            raise ValueError("Unknown runner.")
         
     def path_shower(self, paths, runner):
         """
@@ -457,10 +478,9 @@ class mazy():
         self.maze.save(runner)
         #The maze grid is saved with its name.
         self.maze.display(colors="viridis")
-        self.maze.grid = self.maze.saved["Original"]
+        self.maze.grid = self.maze.saved["Original"].copy()
         #The maze grid is set back to the clean and original maze in order to 
-        #continue working with it.
-        
+        #continue working with it. 
 
     def maze_runner(self, runner="ICR"):
         """
@@ -476,6 +496,7 @@ class mazy():
         None.
 
         """
+        start_time = time.time()
         position = self.start_point
         #position is a tuple with the coordinates of 
         #the current position of the runner. 
@@ -488,6 +509,10 @@ class mazy():
         #List of available coordinates of the first cell of explorable paths.
         prev_position = (0, 1)
         #tuple with the coordinates of the previous position the runner was.
+        if runner == "IFS":
+            self.flip = bool(randrange(0,2))
+            #This variable is used to change the runner between IGR and IGL
+            #to go right 1 time then left the next time.
         while position != self.exit_point:
             #The runner continues to explore while he hasn't get to 
             #the exit_point 
@@ -531,8 +556,12 @@ class mazy():
                 #The current and previous position are updated.
         self.path_shower(path, runner)
         #The journey of the runner is shown and saved.
-        self.runner_path[runner] = {"Explored": explored, "Path": path,\
-                                    "Distance": len(explored)}
+        duration = time.time()-start_time
+        self.runner_path[runner+" {}".format([k[:3] for k in \
+                self.runner_path].count(runner)+1)] = {"Explored": explored, 
+                                    "Path": path,
+                                    "Distance": len(explored), 
+                                    "Duration": duration}
         #The explored cells, the paths that were taken and the total 
         #cell-distance travelled by the runner are saved in the 
         #self.runner_path dictionnary.
@@ -546,6 +575,8 @@ class mazy():
         None.
 
         """
+        print("")
+        print("Build time : ", self.build_time,"sec.")
         print("")
         print("There are {} path cells in the maze.".format(len(self.drilled)))
         print("")
@@ -562,9 +593,10 @@ class mazy():
 
 
 if __name__ == "__main__":
-    maze = mazy(mode="fast")
+    maze = mazy()
     maze.maze_runner("ICR")
     maze.maze_runner("IGR")
     maze.maze_runner("IGL")
     maze.maze_runner("IAE")
+    maze.maze_runner("IFS")
     maze.summary()
