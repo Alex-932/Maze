@@ -3,7 +3,7 @@
 Grid class to make working with numpy arrays much easier
 
 @author: Alex-932
-@Version : 2.0 (27/03/22)
+@Version : 2.1
 """
 import numpy
 import matplotlib.pyplot as plt
