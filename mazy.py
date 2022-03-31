@@ -5,11 +5,12 @@ Maze creation and resolver class
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7.3 (29/03/22)
+@version: 0.7.4
 """
 
 from grid import grid
 from random import shuffle
+from math import sqrt
 import time
 
 class mazy():
@@ -185,7 +186,7 @@ class mazy():
             #to the colored list in order not to reprocess them.
         self.maze.save(name="Distance")
         #The colored maze is saved as "Distance" in self.maze.saved.
-        self.start_distance = self.maze.get_values(self.start_point)[0]
+        self.start_distance = int(self.maze.get_values(self.start_point)[0])
         #The value of the start_point is saved as it is a quality index.
         self.maze.set_values([self.exit_point, self.start_point], \
                         max(self.maze.get_values(self.maze.coord))+10)
@@ -267,7 +268,7 @@ class mazy():
                 }
         return orientation
             
-    def ICR(position, prev_position, neighbors):
+    def ICR(position, neighbors):
         """
         ICR is a simple guy, he choose a path randomly.
         ICR stands for I Choose Randomly.
@@ -285,7 +286,7 @@ class mazy():
         -------
         tuple
             Coordinates of the first cell of the path the runner will take.
-        neighbors : list of tuple
+        list of tuple
             Coordinates of the other paths the runner could take later.
 
         """
@@ -311,7 +312,7 @@ class mazy():
         -------
         tuple
             Coordinates of the first cell of the path the runner will take.
-        neighbors : list of tuple
+        list of tuple
             Coordinates of the other paths the runner could take later.
 
         """
@@ -346,7 +347,7 @@ class mazy():
         -------
         tuple
             Coordinates of the first cell of the path the runner will take.
-        neighbors : list of tuple
+        list of tuple
             Coordinates of the other paths the runner could take later.
 
         """
@@ -356,6 +357,46 @@ class mazy():
         #We just make sure that the directions provided by the 
         #mazy.get_orientation are actual paths.
         return ordered_directions.pop(), ordered_directions
+    
+    def IAE(self, position, neighbors):
+        """
+        IAE know where the exit is and will aim for it wherever there is an
+        intersection.
+        IAE stands for I Aim for the Exit.
+
+        Parameters
+        ----------
+        position : tuple
+            Coordinates of the current cell the runner is on.
+        neighbors : list of tuple
+            Coordinates of the neighboring cells from the current position.
+
+        Returns
+        -------
+        tuple
+            Coordinates of the first cell of the path the runner will take.
+        list of tuple
+            Coordinates of the other paths the runner could take later.
+
+        """
+        distance = [[sqrt((self.exit_point[0]-k[0])**2 + \
+                             (self.exit_point[1]-k[1])**2), k] \
+                             for k in neighbors]
+        #The euclid distance between a coordinate from a neighbors and the 
+        #exit point is processed. Each element of the distance list is a 
+        #list that contains the euclid distance and the 
+        #neighbor cell coordinates.
+        movement = True
+        while movement == True :
+            movement = False
+            for k in range(1, len(distance)):
+                if distance[k-1][0] < distance[k][0]:
+                    distance[k-1], distance[k] = distance[k], distance[k-1]
+                    movement = True
+        #We bubble sort the euclid distance from the longest to the smallest.
+        choice = distance.pop()[1]
+        return choice, [k[1] for k in distance]
+            
         
     def runner_selector(self, runner, position, prev_position, neighbors):
         """
@@ -381,11 +422,13 @@ class mazy():
 
         """
         if runner == "ICR":
-            return mazy.ICR(position, prev_position, neighbors)
+            return mazy.ICR(position, neighbors)
         elif runner == "IGR":
             return self.IGR(position, prev_position, neighbors)
         elif runner == "IGL":
             return self.IGL(position, prev_position, neighbors)
+        elif runner == "IAE":
+            return self.IAE(position, neighbors)
         
     def path_shower(self, paths, runner):
         """
@@ -494,8 +537,34 @@ class mazy():
         #cell-distance travelled by the runner are saved in the 
         #self.runner_path dictionnary.
         
+    def summary(self):
+        """
+        Give a summary on the maze.
+
+        Returns
+        -------
+        None.
+
+        """
+        print("")
+        print("There are {} path cells in the maze.".format(len(self.drilled)))
+        print("")
+        print("The quickest path to the exit takes {} steps.".format(\
+              self.start_distance))
+        print("")
+        for k in self.runner_path:
+            print(k,"has made it to the exit in {} steps.".format(\
+                  self.runner_path[k]["Distance"]))
+
+
+
+
+
+
 if __name__ == "__main__":
     maze = mazy(mode="fast")
     maze.maze_runner("ICR")
     maze.maze_runner("IGR")
     maze.maze_runner("IGL")
+    maze.maze_runner("IAE")
+    maze.summary()
