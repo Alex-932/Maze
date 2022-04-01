@@ -5,19 +5,18 @@ Maze creation and resolver class
 Created on Sun Mar 20 18:24:35 2022
 
 @author: Alex-932
-@version: 0.7.5
+@version: 0.8
 """
 
 from grid import grid
 from random import shuffle, randrange
 from math import sqrt
-import numpy as np
 import time
-import re
 
 class mazy():
 
-    def __init__(self, x=31, y=21, workman="IDE", tor=False, GUI=False, file=""):
+    def __init__(self, x=31, y=21, workman="IDE", tor=False, GUI=False,\
+                 file=""):
         """
         The mazy class provide algorithms to create and resolve a maze.
 
@@ -44,52 +43,21 @@ class mazy():
             self._x = int(input("X dimension (uneven only) : "))
             self._tor = bool(int(input("Is the maze toroidal ? (1 or 0) ")))
             self._workman = input("Workman (IDE or IGS): ")
-        elif file != "":
-            try :
-                self._tor = tor
-                self.import_file(file)
-            except :
-                print("Wrong filepath !")
-                file = ""
         else :
             self._y = y
             self._x = x
             self._tor = tor
             self._workman = workman
-            
+        
+        self._file = file    
         self.drilled = []
         self.path_neighbors = {}
         self.runner_path = {}
-        
-        if file == "":
-            self.start_point = (1, 1)
-            self.exit_point = (self._x-2, self._y-2)
-            self.maze = grid(self._x, self._y, tor=self._tor, value=0)
-            self.maze.set_values([self.start_point], 2)
-            self.maze.set_values([self.exit_point], 3)
-            self.maze_builder()
-        else :
-            self.compute_path_neighbors()
-            self.maze_coloration()
-        
-    def import_file(self, file):
-        raw_file = open(file)
-        raw_lines = raw_file.readlines()
-        lines = [list(re.split('\n', k)[0]) for k in raw_lines]
-        for sublist in lines :
-            for index in range(len(sublist)) :
-                sublist[index] = int(sublist[index])
-        self._x = len(lines[0])
-        self._y = len(lines)
-        self.maze = grid(self._x, self._y, tor=self._tor, value=0)
-        self.maze.grid = np.array(lines)
-        for x in range(self._x):
-            for y in range(self._y):
-                if self.maze.grid[y, x] == 2:
-                    self.start_point = (x, y)
-                elif self.maze.grid[y, x] == 3:
-                    self.exit_point = (x, y)
-        self.maze.coordinates()
+                    
+        self.maze = grid(self._x, self._y, tor=self._tor, value=0, \
+                         file=self._file)
+            
+        self.maze_builder()
 
     def driller(self, position, middle_point, next_point):
         """
@@ -254,10 +222,32 @@ class mazy():
         None.
 
         """
-        start_time = time.time()    
-        self.worker()
-        self.compute_path_neighbors()
+        start_time = time.time()
+        self.start_point = (1, 1)
+        self.exit_point = (self._x-2, self._y-2)
+        
+        if self._file == '' :
+            self.maze.set_values([self.start_point], 2)
+            self.maze.set_values([self.exit_point], 3)
+            self.worker()
+            
+        else :
+            self._x, self._y = self.maze._x, self.maze._y
+            for x in range(self._x):
+                for y in range(self._y):
+                    value = self.maze.get_values((x,y))[0]
+                    if value == 2 :
+                        self.start_point = (x, y)
+                        self.drilled.append((x, y))
+                    elif value == 3 :
+                        self.exit_point = (x, y)
+                        self.drilled.append((x, y))
+                    elif value == 1 :
+                        self.drilled.append((x, y))
+            self.maze.save(name="Original")
+            
         self.build_time = time.time()-start_time
+        self.compute_path_neighbors()
         self.maze.display()
         self.maze_coloration()
         
@@ -635,3 +625,4 @@ if __name__ == "__main__":
     maze.maze_runner("IAE")
     maze.maze_runner("IFS")
     maze.summary()
+    maze.maze.export()

@@ -3,17 +3,20 @@
 Grid class to make working with numpy arrays much easier
 
 @author: Alex-932
-@Version : 2.1
+@Version : 2.1.1
 """
 import numpy
 import matplotlib.pyplot as plt
+from datetime import datetime
+import re
 
 class grid():
     """
     Generate numpy grids and provide methods to work with it.
     """
     
-    def __init__(self, x, y, tor=False, value=0, dist="fixed", rep=.5):
+    def __init__(self, x, y, tor=False, value=0, dist="fixed", rep=.5, \
+                 file=''):
         """
         Initialize a grid with a size of x*y.
 
@@ -38,8 +41,10 @@ class grid():
         self._tor = tor
         self.fig, self.ax = plt.subplots(figsize=(16, 16))
         self.neighbors = 1
-        
-        if self._dist == "fixed" and type(value) == int :
+        if file != '':
+            self._tor = tor
+            self.import_file(file)
+        elif self._dist == "fixed" and type(value) == int :
             self.grid = numpy.ones([self._y, self._x])*value
         elif self._dist == "random" and type(value) == list :
             self.grid = numpy.random.choice(
@@ -48,7 +53,21 @@ class grid():
             raise ValueError("Wrong set of parameters")
         self.saved = {}
         self.coordinates()
-    
+        
+    def import_file(self, file):
+        raw_file = open(file)
+        raw_lines = raw_file.readlines()
+        lines = [list(re.split('\n', k)[0]) for k in raw_lines]
+        for sublist in lines :
+            for index in range(len(sublist)) :
+                sublist[index] = int(sublist[index])
+        self._x = len(lines[0])
+        self._y = len(lines)
+        try :
+            self.grid = numpy.array(lines)
+        except :
+             print("Something went wrong with the file !")
+             
     def set_values(self, coord, value):
         """
         Set the value of the cells whose coordinates are in the coord list to 
@@ -364,6 +383,17 @@ class grid():
                         for j in coord_x :
                             upscaled[k, j] = 1
         return upscaled
+    
+    def export(self):
+        file = open("Maze_export_{}.txt".format(str(\
+               datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))), "a")
+        maze_as_list = self.saved["Original"].tolist()
+        for raw_row in maze_as_list :
+            raw_row = [str(int(k)) for k in raw_row]
+            row = "".join(raw_row)
+            file.write(row+'\n')
+        file.close()
+        
         
 if __name__ == "__main__":
     t = grid(10, 5)
