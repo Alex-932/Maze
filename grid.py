@@ -55,6 +55,19 @@ class grid():
         self.coordinates()
         
     def import_file(self, file):
+        """
+        Import a file
+
+        Parameters
+        ----------
+        file : str
+            File path.
+
+        Returns
+        -------
+        None.
+
+        """
         raw_file = open(file)
         raw_lines = raw_file.readlines()
         lines = [list(re.split('\n', k)[0]) for k in raw_lines]
@@ -191,48 +204,6 @@ class grid():
                     list_neigh.append(((coord[0]+k)%self._x, coord[1]%self._y))
                     list_neigh.append((coord[0]%self._x, (coord[1]+k)%self._y))
             return list_neigh
-        
-    # def get_neighbors_border(self, coord, length=1, pattern='O'):
-    #     """
-    #     Method to get the coordinates of neighbors cells at the border of the
-    #     search range.
-
-    #     Parameters
-    #     ----------
-    #     coord : tuple
-    #         The tuple include the X and Y coordinates.
-    #     length : int
-    #         Cell range for the search.
-    #     pattern : chr
-    #         Search pattern : "O" for a square area, "+" for a cross area.
-            
-    #     Returns
-    #     -------
-    #     List of neighbors coordinates. 
-    #     """
-    #     list_neigh = []
-    #     if length < 1 :
-    #         raise ValueError("Incorrect length (must be >= 1)")
-    #     if type(coord) != tuple and len(coord) != 2 :
-    #         raise ValueError("Something is wrong with the coordinates")
-    #     if coord[0] not in range(self._x) and \
-    #         coord[1] not in range(self._y):
-    #         raise ValueError("Some coordinates are not in the array")
-    #     if pattern == 'O':
-    #         for k in range(coord[1]-length, coord[1]+1+length, length):
-    #             if k >= 0 and k < self._y :
-    #                 for j in range(coord[0]-length, coord[1]+1+length, length):
-    #                     if j >= 0 and j < self._x \
-    #                         and (k,j) != (coord[1],coord[0]) :
-    #                         list_neigh.append((j, k))
-    #     elif pattern == '+':
-    #         modulation_list = [k for k in range(-length, length+1, length)\
-    #                            if k != 0]
-    #         for k in modulation_list:
-    #             if coord[0]+k >=0 and coord[1]+k <= self._y :
-    #                 list_neigh.append((coord[0]+k,coord[1]))
-    #                 list_neigh.append((coord[0],coord[1]+k))
-    #     return list_neigh
         
     def show_neighbors(self, coord):
         """
@@ -377,14 +348,30 @@ class grid():
             for x in range(array.shape[1]):
                 if array[y, x] == 1 :
                     new_y, new_x, offset = y*factor, x*factor, int(factor/2)
-                    coord_y = [k for k in range(new_y-offset, new_y+offset+1) if k >= 0 and k <= upscaled.shape[1]]
-                    coord_x = [k for k in range(new_x-offset, new_x+offset+1) if k >= 0 and k <= upscaled.shape[0]]
+                    coord_y = [k for k in range(new_y-offset, new_y+offset+1) \
+                               if k >= 0 and k <= upscaled.shape[1]]
+                    coord_x = [k for k in range(new_x-offset, new_x+offset+1) \
+                               if k >= 0 and k <= upscaled.shape[0]]
                     for k in coord_y :
                         for j in coord_x :
                             upscaled[k, j] = 1
         return upscaled
     
-    def export(self):
+    def export(self, name):
+        """
+        Export the grid with the given name from the self.mazed dict in a 
+        .txt file.
+
+        Parameters
+        ----------
+        name : str
+            Name of the grid in the self.saved dict.
+
+        Returns
+        -------
+        None.
+
+        """
         file = open("Maze_export_{}.txt".format(str(\
                datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))), "a")
         maze_as_list = self.saved["Original"].tolist()
