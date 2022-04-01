@@ -59,7 +59,7 @@ class mazy():
             
         self.maze_builder()
 
-    def driller(self, position, middle_point, next_point):
+    def drill(self, position, middle_point, next_point):
         """
         Set the values of the given cells to 1 which is the value of a 
         "path" cell.
@@ -86,7 +86,7 @@ class mazy():
             coord_list = [middle_point]
         self.maze.set_values(coord_list, 1)
         
-    def worker_core(self, workman, primers):
+    def driller_core(self, workman, primers):
         if workman == "IDE":
             shuffle(primers)
             (px, py) = primers.pop()
@@ -102,13 +102,13 @@ class mazy():
                            and y in range(self._y) \
                                and (x, y) not in self.drilled]
         #That list contains the neighboring cells coordinates that the
-        #worker can drill.
+        #driller can drill.
         shuffle(options)
         return px, py, options        
     
-    def worker(self):
+    def driller(self):
         """
-        Worker is the algorithm that create the maze.
+        driller is the algorithm that create the maze.
 
         Returns
         -------
@@ -116,22 +116,22 @@ class mazy():
 
         """
         primers = [self.start_point]
-        #List that save the coordinates of the paths that the worker can take.
-        #For example, at each cell, the worker can go one direction and the 
+        #List that save the coordinates of the paths that the driller can take.
+        #For example, at each cell, the driller can go one direction and the 
         #others are added to that list to come back at them later.  
         self.drilled = [self.start_point]
         #List that save the cell that are now "path".
         while len(primers) != 0:
-            px, py, options = self.worker_core(self._workman, primers)
+            px, py, options = self.driller_core(self._workman, primers)
             options_count = len(options)
             if options_count >= 1 :
-                #We make sure there are options available for our worker.
+                #We make sure there are options available for our driller.
                 #Else it's a deadend so we lookback to choose another primer.
                 next_p = options.pop()
-                #Worker destination.
+                #driller destination.
                 mid_p = (int(px+(next_p[0]-px)/2), int(py+(next_p[1]-py)/2))
                 #Coordinates between the current position and the destination.
-                self.driller((px, py), mid_p, next_p)
+                self.drill((px, py), mid_p, next_p)
                 #We drill the cells. 
                 self.drilled.append(next_p)
                 self.drilled.append(mid_p)
@@ -142,7 +142,7 @@ class mazy():
                     else :
                         primers += [(px, py), next_p]
                 #We add the coordinates of the cell that the 
-                #worker could continue from.
+                #driller could continue from.
         #We finally add all drilled cell to "drilled".
         for coord in self.maze.coord :
             if self.maze.get_values(coord)[0] == 1 \
@@ -150,7 +150,20 @@ class mazy():
                 self.drilled.append(coord)
         #We save the maze in order to use it later.        
         self.maze.save(name="Original")
-            
+        
+    def supervisor(self, mode="driller"):
+        if mode == "driller":
+            self.driller()
+        if mode == "gatemen":
+            lanes_raw = [cell for cell in self.maze.coord \
+                     if cell[0]%2 != 0 or cell[1]%2 != 0]
+            lanes = [cell for cell in lanes_raw \
+              if cell[0] != 0 and cell[1] != 0 \
+                  and cell[0] != self._x-1 and cell[1] != self._y-1]
+            doors = [cell for cell in self.maze.coord \
+                     if (cell[0]%2 == 0)*(cell[1]%2 == 0) == 0 \
+                         and ((cell[0]%2 +cell[1]%2)) != 0]
+                
     def compute_path_neighbors(self):
         """
         Method to generate a dictionnary (self.path_neighbors) containing, 
@@ -183,7 +196,7 @@ class mazy():
         colored = [self.exit_point]
         #Colored is a list which save the cell that are already colored.
         primers = colored.copy()
-        #Primers as the same function as in the worker method.
+        #Primers as the same function as in the driller method.
         while len(self.drilled) != len(colored) :
             #The coloration continue as long as all drilled (or path) cell 
             #aren't colored.
@@ -229,7 +242,7 @@ class mazy():
         if self._file == '' :
             self.maze.set_values([self.start_point], 2)
             self.maze.set_values([self.exit_point], 3)
-            self.worker()
+            self.supervisor("driller")
             
         else :
             self._x, self._y = self.maze._x, self.maze._y
@@ -625,4 +638,4 @@ if __name__ == "__main__":
     maze.maze_runner("IAE")
     maze.maze_runner("IFS")
     maze.summary()
-    maze.maze.export()
+    maze.maze.export("Original")
